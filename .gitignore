@@ -1,0 +1,12 @@
+# Node dependencies
+node_modules/
+
+# Expo specific
+.expo/
+dist/
+
+# Environment variables
+.env
+
+# IDE files
+.vscode/
