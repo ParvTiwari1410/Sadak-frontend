@@ -1,18 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch } from "react-native"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput } from "react-native"
+import { Button } from "@/components/ui/button" // Assuming this Button is a custom component
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useNavigation } from "expo-router";
+import { NavigationProp } from "@react-navigation/native";
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 type RootTabParamList = {
   Feed: undefined
   Profile: undefined
-  Home: undefined
+  home: undefined
 }
 
 type Props = NativeStackScreenProps<RootTabParamList, "Profile">
@@ -45,14 +46,15 @@ interface Achievement {
   target?: number
 }
 
-export function ProfileScreen({ navigation }: Props) {
+export function ProfileScreen({}: Props) {
+  const navigation = useNavigation<NavigationProp<RootTabParamList>>();
   const [isEditing, setIsEditing] = useState(false)
   const [selectedTab, setSelectedTab] = useState("profile")
 
-  const [userProfile] = useState<UserProfile>({
+  const [userProfile, setUserProfile] = useState<UserProfile>({
     id: "1",
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: "Parv Tiwari", // Changed name to match image
+    email: "parvatiwari0714@gmail.com", // Changed email to match image
     phone: "+91 9876543210",
     city: "Gurgaon",
     joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
@@ -64,6 +66,17 @@ export function ProfileScreen({ navigation }: Props) {
     communityRank: 42,
     totalUsers: 1250,
   })
+
+  const [formData, setFormData] = useState<UserProfile>(userProfile);
+
+  const handleInputChange = (field: keyof UserProfile, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveChanges = () => {
+    setUserProfile(formData);
+    setIsEditing(false);
+  };
 
   const [achievements] = useState<Achievement[]>([
     {
@@ -138,8 +151,11 @@ export function ProfileScreen({ navigation }: Props) {
   const getLevelProgress = () => {
     const pointsForNextLevel = userProfile.level * 100
     const currentLevelPoints = (userProfile.level - 1) * 100
-    const progress = ((userProfile.points - currentLevelPoints) / (pointsForNextLevel - currentLevelPoints)) * 100
-    return Math.min(progress, 100)
+    // Ensure points are within bounds for percentage calculation
+    const pointsInCurrentLevel = userProfile.points - currentLevelPoints;
+    const levelRange = pointsForNextLevel - currentLevelPoints;
+    const progress = (pointsInCurrentLevel / levelRange) * 100;
+    return Math.min(Math.max(progress, 0), 100); // Clamp between 0 and 100
   }
 
   const formatDate = (date: Date) => {
@@ -155,7 +171,9 @@ export function ProfileScreen({ navigation }: Props) {
       {/* Profile Header */}
       <Card style={styles.profileCard}>
         <CardContent style={styles.profileCardContent}>
+          {/* --- RESTRUCTURED: Profile Header Layout --- */}
           <View style={styles.profileHeader}>
+            {/* Avatar Section */}
             <View style={styles.profileAvatarContainer}>
               <View style={styles.profileAvatar}>
                 <Text style={styles.profileAvatarText}>{userProfile.name[0]}</Text>
@@ -164,15 +182,25 @@ export function ProfileScreen({ navigation }: Props) {
                 <Text style={styles.cameraButtonText}>📷</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userProfile.name}</Text>
-              <Text style={styles.profileEmail}>{userProfile.email}</Text>
-              <View style={styles.profileBadges}>
+
+            {/* Name, Email, Edit Button, Badges Section */}
+            <View style={styles.profileHeaderText}>
+              <View style={styles.profileNameRow}>
+                <View> {/* Group name and email */}
+                  <Text style={styles.profileName}>{userProfile.name}</Text>
+                  <Text style={styles.profileEmail}>{userProfile.email}</Text>
+                </View>
+                {/* Edit Button */}
+                <TouchableOpacity style={styles.editButton} onPress={() => { setIsEditing(true); setFormData(userProfile); }}>
+                  <Text style={styles.editButtonText}>✏️ Edit</Text>
+                </TouchableOpacity>
+              </View>
+              {/* Badges */}
+              <View style={styles.profileBadgesContainer}> {/* NEW: Container for badges */}
                 <Badge>Level {userProfile.level}</Badge>
                 <Badge>{userProfile.points} points</Badge>
               </View>
             </View>
-            <Button onPress={() => setIsEditing(!isEditing)}>✏️ Edit</Button>
           </View>
 
           {/* Level Progress */}
@@ -215,37 +243,29 @@ export function ProfileScreen({ navigation }: Props) {
         <CardContent style={styles.detailsContent}>
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Full Name</Text>
-            <Input value={userProfile.name} editable={isEditing} style={!isEditing && styles.disabledInput} />
+            <TextInput value={formData.name} onChangeText={(text) => handleInputChange('name', text)} editable={isEditing} style={[styles.input, !isEditing && styles.disabledInput]} />
           </View>
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Email</Text>
-            <Input
-              value={userProfile.email}
-              keyboardType="email-address"
-              editable={isEditing}
-              style={!isEditing && styles.disabledInput}
-            />
+            <TextInput value={formData.email} onChangeText={(text) => handleInputChange('email', text)} keyboardType="email-address" editable={isEditing} style={[styles.input, !isEditing && styles.disabledInput]} />
           </View>
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Phone</Text>
-            <Input
-              value={userProfile.phone || ""}
-              keyboardType="phone-pad"
-              editable={isEditing}
-              style={!isEditing && styles.disabledInput}
-            />
+            <TextInput value={formData.phone || ""} onChangeText={(text) => handleInputChange('phone', text)} keyboardType="phone-pad" editable={isEditing} style={[styles.input, !isEditing && styles.disabledInput]} />
           </View>
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>City</Text>
-            <Input value={userProfile.city} editable={isEditing} style={!isEditing && styles.disabledInput} />
+            <TextInput value={formData.city} onChangeText={(text) => handleInputChange('city', text)} editable={isEditing} style={[styles.input, !isEditing && styles.disabledInput]} />
           </View>
 
           {isEditing && (
             <View style={styles.editActions}>
-              <TouchableOpacity style={styles.saveButton}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges}>
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </TouchableOpacity>
-              <Button onPress={() => setIsEditing(false)}>Cancel</Button>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setIsEditing(false)}>
+                 <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -418,9 +438,9 @@ export function ProfileScreen({ navigation }: Props) {
       {/* Account Actions */}
       <Card style={styles.settingsCard}>
         <CardContent style={styles.logoutContainer}>
-         <TouchableOpacity onPress={() => navigation.navigate("Home")} style={styles.backButton}>
-  <Text style={styles.backButtonText}>←</Text>
-</TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("home")} style={styles.backButton}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
         </CardContent>
       </Card>
     </View>
@@ -431,9 +451,9 @@ export function ProfileScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-         <TouchableOpacity onPress={() => navigation.navigate("Home")} style={styles.backButton}>
-  <Text style={styles.backButtonText}>←</Text>
-</TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("home")} style={styles.backButton}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
 
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>Profile</Text>
@@ -539,19 +559,19 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     padding: 16,
-    gap: 24,
+    gap: 16, // Reduced gap for a slightly more compact look
   },
   profileCard: {
-    marginBottom: 16,
+    // Removed marginBottom as gap in tabContent handles it
   },
   profileCardContent: {
-    padding: 24,
+    padding: 16, // Adjusted padding for better fit
   },
   profileHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "center", // Align items vertically in the center
     gap: 16,
-    marginBottom: 16,
+    marginBottom: 20, // Increased spacing below the header
   },
   profileAvatarContainer: {
     position: "relative",
@@ -579,29 +599,54 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: '#ffffff'
   },
   cameraButtonText: {
     fontSize: 16,
   },
-  profileInfo: {
-    flex: 1,
+  // --- MODIFIED & NEW STYLES FOR PROFILE HEADER ALIGNMENT ---
+  profileHeaderText: {
+    flex: 1, // Take up remaining space
+    justifyContent: 'space-between', // Push badge container to bottom if needed, or ensure even spacing
+    alignSelf: 'stretch', // Allow it to stretch to contain its children
   },
+  profileNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between', // Push name/email group to left, edit button to right
+    alignItems: 'flex-start', // Align name and email to the top
+    marginBottom: 8, // Space between name/email and badges
+  },
+  // profileInfo removed as it's no longer needed with new structure
   profileName: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: 2,
+    color: '#1f2937'
   },
   profileEmail: {
     fontSize: 14,
     color: "#6b7280",
-    marginBottom: 8,
   },
-  profileBadges: {
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#eef2ff',
+    borderRadius: 99, // Makes it pill-shaped
+  },
+  editButtonText: {
+    color: '#4338ca', // A vibrant blue
+    fontWeight: '500'
+  },
+  profileBadgesContainer: { // NEW container for badges
     flexDirection: "row",
     gap: 8,
+    // marginTop: 8 removed, using marginBottom on profileNameRow instead for better flow
   },
+  // --- END MODIFIED & NEW STYLES ---
+
   levelProgress: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   levelProgressHeader: {
     flexDirection: "row",
@@ -616,6 +661,7 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: "#e5e7eb",
     borderRadius: 4,
+    overflow: 'hidden', // Ensures progress bar doesn't overflow rounded corners
     marginBottom: 4,
   },
   levelProgressBar: {
@@ -626,10 +672,14 @@ const styles = StyleSheet.create({
   levelProgressSubtext: {
     fontSize: 12,
     color: "#6b7280",
+    textAlign: 'right'
   },
   statsGrid: {
     flexDirection: "row",
-    gap: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    marginTop: 8, // Added space between progress bar and stats
   },
   statItem: {
     flex: 1,
@@ -638,74 +688,85 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: "#6b7280",
+    marginTop: 2
   },
   detailsCard: {
-    marginBottom: 16,
+    // Removed marginBottom as gap in tabContent handles it
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: "600",
-    marginBottom: 8,
   },
   detailsContent: {
     gap: 16,
   },
   inputGroup: {
-    gap: 4,
+    gap: 6,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: "500",
     color: "#374151",
   },
+  input: {
+    height: 40,
+    borderColor: '#d1d5db',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
+    fontSize: 14,
+  },
   disabledInput: {
     backgroundColor: "#f9fafb",
+    color: '#6b7280' // Make text look disabled too
   },
   editActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 12,
+    marginTop: 8,
   },
   saveButton: {
     flex: 1,
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#2563eb", // Slightly darker blue for save
     paddingVertical: 12,
-    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: "center",
   },
   saveButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
-  logoutButton: {
-    backgroundColor: "#dc2626",
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#e5e7eb",
     paddingVertical: 12,
-    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: "center",
   },
-  logoutButtonText: {
-    color: "#ffffff",
+  cancelButtonText: {
+    color: "#4b5563",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   memberSince: {
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
+    marginTop: 8,
   },
   memberSinceText: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#6b7280",
+    textAlign: 'center'
   },
   achievementCard: {
-    marginBottom: 16,
+    // marginBottom: 16, // Managed by tabContent gap
   },
   earnedAchievementCard: {
     backgroundColor: "#f0fdf4",

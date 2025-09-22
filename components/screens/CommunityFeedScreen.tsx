@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from "react-native"
-
+import { useNavigation } from 'expo-router';
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 type RootStackParamList = {
@@ -51,7 +51,8 @@ const issueTypeConfig = {
   other: { icon: "➖", color: "#6b7280" },
 }
 
-export function CommunityFeedScreen({ navigation }: Props){
+export function CommunityFeedScreen(){
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilter, setSelectedFilter] = useState("all")
   const [sortBy, setSortBy] = useState("recent")
@@ -274,7 +275,7 @@ export function CommunityFeedScreen({ navigation }: Props){
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Home")}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
   <Text style={styles.backButtonText}>←</Text>
 </TouchableOpacity>
           <View style={styles.headerInfo}>

@@ -50,7 +50,7 @@ export function AuthScreen() {
     setErrors({});
 
     const endpoint = isLogin ? 'login' : 'signup';
-    const url = `http://10.122.254.125:8080/api/auth/${endpoint}`;
+  const url = `http://10.216.96.125:8080/api/auth/${endpoint}`;
 
     const body = isLogin
       ? JSON.stringify({ email: formData.email, password: formData.password })

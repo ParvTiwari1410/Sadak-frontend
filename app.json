@@ -3,26 +3,32 @@
     "name": "SadakSaathi",
     "slug": "sadak-saathi",
     "version": "1.0.0",
+    "owner": "parvtx_1410",
     "orientation": "portrait",
-    "icon": "./assets/icon.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.jpg",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture photos of road issues for reporting.",
         "NSLocationWhenInUseUsageDescription": "This app uses location to help you report issues at your current location and find nearby hazards.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to help you report issues at your current location and find nearby hazards."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyCYx8LzaE5LyQ0K_ZpavIiRBXGklwx3pVM"
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.jpg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -30,10 +36,16 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ],
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "package": "com.parvtx1410.sadaksaathi",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCYx8LzaE5LyQ0K_ZpavIiRBXGklwx3pVM"
+        }
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.jpg"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -48,7 +60,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow SadakSaathi to use your location to help report issues and find nearby hazards."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "sadak-saathi",
     "extra": {
@@ -56,7 +69,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "fb38c9eb-a3e9-429f-ad74-91acad1094a1"
       }
     }
   }

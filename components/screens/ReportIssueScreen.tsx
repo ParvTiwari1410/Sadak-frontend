@@ -1,20 +1,59 @@
-"use client"
+"use client";
 
 import { Feather } from "@expo/vector-icons";
-import { View, StyleSheet, SafeAreaView, ScrollView, Image, Alert, TouchableOpacity, Text, TextInput } from "react-native";
-import { useState } from "react";
-import { useNavigation } from "expo-router";
-
-// These imports are assumed to be from your custom component library and hooks
+import Constants from 'expo-constants';
+import {
+  View,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Image,
+  Alert,
+  TouchableOpacity,
+  Text,
+  TextInput,
+  ActivityIndicator, // Import ActivityIndicator for loading spinner
+} from "react-native";
+import { useState, useCallback } from "react";
+import { useNavigation, useFocusEffect } from "expo-router";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CardContent, Card } from "@/components/ui/card";
 import { useCamera } from "@/hooks/use-camera";
-import { useLocation } from "@/hooks/use-location";
+import * as Location from "expo-location"; // Using expo-location directly
+
+const CLOUDINARY_URL =
+  "https://api.cloudinary.com/v1_1/dc75wqcrf/image/upload";
+const UPLOAD_PRESET = "sadaksaathi_preset";
+
+const uploadToCloudinary = async (uri: string): Promise<string> => {
+  const formData = new FormData();
+  formData.append(
+    "file",
+    { uri, type: "image/jpeg", name: "upload.jpg" } as any
+  );
+  formData.append("upload_preset", UPLOAD_PRESET);
+
+  const response = await fetch(CLOUDINARY_URL, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+  if (data.secure_url) {
+    return data.secure_url; // hosted URL
+  } else {
+    throw new Error("Image upload failed: " + JSON.stringify(data));
+  }
+};
 
 interface ReportData {
   photos: string[];
-  location: string;
+  location: {
+    address: string;
+    latitude?: number;
+    longitude?: number;
+  };
   category: string;
   severity: string;
   description: string;
@@ -22,18 +61,53 @@ interface ReportData {
 }
 
 const issueCategories = [
-  { value: "pothole", label: "Pothole", icon: "alert-triangle", color: "#dc2626" },
-  { value: "waterlogging", label: "Waterlogging", icon: "droplets", color: "#2563eb" },
+  {
+    value: "pothole",
+    label: "Pothole",
+    icon: "alert-triangle",
+    color: "#dc2626",
+  },
+  {
+    value: "waterlogging",
+    label: "Waterlogging",
+    icon: "cloud-drizzle",
+    color: "#2563eb",
+  },
   { value: "utility", label: "Utility Repair", icon: "tool", color: "#ea580c" },
-  { value: "violence", label: "Violence/Nuisance", icon: "shield", color: "#7c3aed" },
+  {
+    value: "violence",
+    label: "Violence/Nuisance",
+    icon: "shield",
+    color: "#7c3aed",
+  },
   { value: "other", label: "Other", icon: "more-horizontal", color: "#6b7280" },
 ] as const;
 
 const severityLevels = [
-  { value: "low", label: "Low", description: "Minor inconvenience", color: "#16a34a" },
-  { value: "medium", label: "Medium", description: "Moderate impact", color: "#ca8a04" },
-  { value: "high", label: "High", description: "Significant problem", color: "#ea580c" },
-  { value: "critical", label: "Critical", description: "Immediate danger", color: "#dc2626" },
+  {
+    value: "low",
+    label: "Low",
+    description: "Minor inconvenience",
+    color: "#16a34a",
+  },
+  {
+    value: "medium",
+    label: "Medium",
+    description: "Moderate impact",
+    color: "#ca8a04",
+  },
+  {
+    value: "high",
+    label: "High",
+    description: "Significant problem",
+    color: "#ea580c",
+  },
+  {
+    value: "critical",
+    label: "Critical",
+    description: "Immediate danger",
+    color: "#dc2626",
+  },
 ];
 
 export function ReportIssueScreen() {
@@ -41,68 +115,113 @@ export function ReportIssueScreen() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
   const { takePhoto, selectFromGallery, isLoading: cameraLoading } = useCamera();
-  const { getCurrentLocation, isLoading: locationLoading } = useLocation();
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   const [reportData, setReportData] = useState<ReportData>({
     photos: [],
-    location: "Detecting location...",
+    location: { address: "" },
     category: "",
     severity: "",
     description: "",
     isAnonymous: false,
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const totalSteps = 4;
 
-  const handlePhotoCapture = () => {
-    Alert.alert("Add Photo", "Choose how you want to add a photo", [
+  const handlePhotoCapture = () =>
+    Alert.alert("Add Photo", "Choose an option", [
       { text: "Camera", onPress: handleTakePhoto },
       { text: "Gallery", onPress: handleSelectPhoto },
       { text: "Cancel", style: "cancel" },
     ]);
-  };
 
   const handleTakePhoto = async () => {
     const photo = await takePhoto();
-    if (photo) {
-      setReportData((prev) => ({ ...prev, photos: [...prev.photos, photo.uri].slice(0, 3) }));
-      setErrors((prev) => ({ ...prev, photos: "" }));
-    }
+    if (photo)
+      setReportData((p) => ({
+        ...p,
+        photos: [...p.photos, photo.uri].slice(0, 3),
+      }));
   };
 
   const handleSelectPhoto = async () => {
     const photo = await selectFromGallery();
-    if (photo) {
-      setReportData((prev) => ({ ...prev, photos: [...prev.photos, photo.uri].slice(0, 3) }));
-      setErrors((prev) => ({ ...prev, photos: "" }));
-    }
+    if (photo)
+      setReportData((p) => ({
+        ...p,
+        photos: [...p.photos, photo.uri].slice(0, 3),
+      }));
   };
 
-  const removePhoto = (index: number) => {
-    setReportData((prev) => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
-  };
+  const removePhoto = (index: number) =>
+    setReportData((p) => ({
+      ...p,
+      photos: p.photos.filter((_, i) => i !== index),
+    }));
 
   const handleGetCurrentLocation = async () => {
-    const location = await getCurrentLocation();
-    if (location) {
-      setReportData((prev) => ({ ...prev, location: location.address || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` }));
-      setErrors((prev) => ({ ...prev, location: "" }));
+    setIsFetchingLocation(true);
+    setErrors((prev) => {
+  const { location, ...rest } = prev; // Destructure to separate 'location'
+  return rest; // Return the rest of the errors
+});
+
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Permission to access location was denied."
+      );
+      setIsFetchingLocation(false);
+      return;
+    }
+
+    try {
+      let currentLocation = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = currentLocation.coords;
+
+      let addressResult = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
+      let address = "Unknown Location";
+      if (addressResult.length > 0) {
+        const ad = addressResult[0];
+        address = `${ad.name || ""} ${ad.street || ""}, ${ad.city || ""}, ${
+          ad.postalCode || ""
+        }`.trim();
+      }
+
+      setReportData((p) => ({ ...p, location: { address, latitude, longitude } }));
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, location: "Could not fetch location." }));
+    } finally {
+      setIsFetchingLocation(false);
     }
   };
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     switch (step) {
-      case 1: if (reportData.photos.length === 0) newErrors.photos = "Please add at least one photo"; break;
-      case 2: if (!reportData.location || reportData.location.includes("Detecting")) newErrors.location = "Please set a valid location"; break;
-      case 3:
-        if (!reportData.category) newErrors.category = "Please select a category";
-        if (!reportData.severity) newErrors.severity = "Please select severity level";
+      case 1:
+        if (reportData.photos.length === 0)
+          newErrors.photos = "Please add at least one photo";
         break;
-      case 4: if (!reportData.description.trim()) newErrors.description = "Please provide a description"; break;
+      case 2:
+        if (!reportData.location.address)
+          newErrors.location = "Please set a valid location";
+        break;
+      case 3:
+        if (!reportData.category)
+          newErrors.category = "Please select a category";
+        if (!reportData.severity)
+          newErrors.severity = "Please select severity level";
+        break;
+      case 4:
+        if (!reportData.description.trim())
+          newErrors.description = "Please provide a description";
+        break;
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -110,30 +229,70 @@ export function ReportIssueScreen() {
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      if (currentStep < totalSteps) {
-        setCurrentStep(currentStep + 1);
-      } else {
-        handleSubmit();
-      }
+      if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+      else handleSubmit();
     }
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      setCurrentStep(1);
+      setShowSuccess(false);
+      setIsSubmitting(false);
+      setReportData({
+        photos: [],
+        location: { address: "" },
+        category: "",
+        severity: "",
+        description: "",
+        isAnonymous: false,
+      });
+      setErrors({});
+    }, [])
+  );
+
   const handleSubmit = async () => {
+    if (!validateStep(4)) return;
     setIsSubmitting(true);
+    setErrors({});
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API call
+      const uploadedPhotos: string[] = await Promise.all(
+        reportData.photos.map((uri) => uploadToCloudinary(uri))
+      );
+
+      const response = await fetch("http://10.216.96.125:8080/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${reportData.category} report`,
+          location: reportData.location.address,
+          latitude: reportData.location.latitude,
+          longitude: reportData.location.longitude,
+          status: "Submitted",
+          severity: reportData.severity,
+          description: reportData.description,
+          photos: uploadedPhotos,
+          isAnonymous: reportData.isAnonymous,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit report");
+      }
+
       setShowSuccess(true);
       setTimeout(() => {
         navigation.navigate("index" as never);
       }, 3000);
     } catch (error) {
-      setErrors({ submit: "Failed to submit report. Please try again." });
+      setErrors({
+        submit: "Failed to submit report. Please try again.",
+      });
+      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -145,13 +304,20 @@ export function ReportIssueScreen() {
         <View style={styles.successContainer}>
           <Card style={styles.successCard}>
             <CardContent style={styles.successContent}>
-              <View style={styles.successIcon}><Feather name="check-circle" size={32} color="#16a34a" /></View>
+              <View style={styles.successIcon}>
+                <Feather name="check-circle" size={32} color="#16a34a" />
+              </View>
               <Text style={styles.successTitle}>Report Submitted!</Text>
-              <Text style={styles.successDescription}>Your report has been submitted successfully. The community will validate it soon.</Text>
+              <Text style={styles.successDescription}>
+                Your report has been submitted successfully.
+              </Text>
               <View style={styles.successPoints}>
-                <Text style={styles.successPoint}>• You'll receive notifications about updates</Text>
-                <Text style={styles.successPoint}>• Track progress in "My Reports"</Text>
-                <Text style={styles.successPoint}>• Earn points for verified reports</Text>
+                <Text style={styles.successPoint}>
+                  • You'll receive notifications about updates
+                </Text>
+                <Text style={styles.successPoint}>
+                  • Track progress in "My Reports"
+                </Text>
               </View>
             </CardContent>
           </Card>
@@ -164,90 +330,241 @@ export function ReportIssueScreen() {
     switch (currentStep) {
       case 1:
         return (
-            <View>
-              <View style={styles.stepHeader}><Text style={styles.stepTitle}>Add Photos</Text><Text style={styles.stepDescription}>Take or upload photos of the issue</Text></View>
-              {errors.photos && <View style={styles.errorContainer}><Text style={styles.errorText}>{errors.photos}</Text></View>}
-              <View style={styles.photosGrid}>
-                {reportData.photos.map((photo, index) => (
-                  <View key={index} style={styles.photoContainer}>
-                    <Image source={{ uri: photo }} style={styles.photo} />
-                    <TouchableOpacity style={styles.removePhotoButton} onPress={() => removePhoto(index)}>
-                      <Feather name="x" size={12} color="#ffffff" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                {reportData.photos.length < 3 && (
-                  <TouchableOpacity style={styles.addPhotoButton} onPress={handlePhotoCapture} disabled={cameraLoading}>
-                    <Feather name="camera" size={32} color="#9ca3af" />
-                    <Text style={styles.addPhotoText}>Add Photo</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              <View style={styles.photoActions}>
-                <TouchableOpacity style={styles.photoActionButton} onPress={handleTakePhoto}><Feather name="camera" size={20} color="#666" /><Text style={styles.photoActionText}>Take Photo</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.photoActionButton} onPress={handleSelectPhoto}><Feather name="upload-cloud" size={20} color="#666" /><Text style={styles.photoActionText}>Upload</Text></TouchableOpacity>
-              </View>
+          <View>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Add Photos</Text>
+              <Text style={styles.stepDescription}>
+                Take or upload photos of the issue
+              </Text>
             </View>
+            {errors.photos && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errors.photos}</Text>
+              </View>
+            )}
+            <View style={styles.photosGrid}>
+              {reportData.photos.map((photo, index) => (
+                <View key={index} style={styles.photoContainer}>
+                  <Image source={{ uri: photo }} style={styles.photo} />
+                  <TouchableOpacity
+                    style={styles.removePhotoButton}
+                    onPress={() => removePhoto(index)}
+                  >
+                    <Feather name="x" size={12} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {reportData.photos.length < 3 && (
+                <TouchableOpacity
+                  style={styles.addPhotoButton}
+                  onPress={handlePhotoCapture}
+                  disabled={cameraLoading}
+                >
+                  <Feather name="camera" size={32} color="#9ca3af" />
+                  <Text style={styles.addPhotoText}>Add Photo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         );
       case 2:
+        const isLocationSet = !!reportData.location.latitude;
         return (
-            <View>
-                <View style={styles.stepHeader}><Text style={styles.stepTitle}>Set Location</Text><Text style={styles.stepDescription}>Confirm the location of the issue</Text></View>
-                {errors.location && <View style={styles.errorContainer}><Text style={styles.errorText}>{errors.location}</Text></View>}
-                <View style={styles.locationInfo}><TouchableOpacity style={styles.locationButton} onPress={handleGetCurrentLocation} disabled={locationLoading}><Feather name="map-pin" size={20} color="#2563eb" /><Text style={styles.locationButtonText}>{locationLoading ? "Getting Location..." : "Get Current Location"}</Text></TouchableOpacity><Text style={{textAlign: 'center', color: '#9ca3af', marginVertical: 16}}>OR</Text><View><Text style={styles.label}>Enter Address Manually</Text><TextInput placeholder="Enter specific address or landmark" value={reportData.location.includes("Detecting") ? "" : reportData.location} onChangeText={(text) => setReportData(p => ({ ...p, location: text }))} style={styles.locationInput} /></View></View>
+          <View>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Set Location</Text>
+              <Text style={styles.stepDescription}>
+                Confirm the location of the issue
+              </Text>
             </View>
+            {errors.location && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errors.location}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                isLocationSet && styles.locationButtonSuccess,
+              ]}
+              onPress={handleGetCurrentLocation}
+              disabled={isFetchingLocation}
+            >
+              {isFetchingLocation ? (
+                <ActivityIndicator color="#2563eb" />
+              ) : (
+                <Feather
+                  name={isLocationSet ? "check-circle" : "map-pin"}
+                  size={20}
+                  color={isLocationSet ? "#ffffff" : "#2563eb"}
+                />
+              )}
+              <Text
+                style={[
+                  styles.locationButtonText,
+                  isLocationSet && { color: "#ffffff" },
+                ]}
+              >
+                {isFetchingLocation
+                  ? "Getting Location..."
+                  : isLocationSet
+                  ? "Location Set!"
+                  : "Use Current Location"}
+              </Text>
+            </TouchableOpacity>
+
+            <Text
+              style={{
+                textAlign: "center",
+                color: "#9ca3af",
+                marginVertical: 16,
+              }}
+            >
+              OR
+            </Text>
+
+            <View>
+              <Text style={styles.label}>Enter Address Manually</Text>
+              <TextInput
+                placeholder="Enter address or landmark"
+                value={reportData.location.address}
+                onChangeText={(text) =>
+                  setReportData((p) => ({
+                    ...p,
+                    location: { ...p.location, address: text },
+                  }))
+                }
+                style={styles.locationInput}
+              />
+            </View>
+          </View>
         );
       case 3:
         return (
-            <View>
-                <View style={styles.stepHeader}><Text style={styles.stepTitle}>Categorize Issue</Text><Text style={styles.stepDescription}>Select the type and severity</Text></View>
-                {(errors.category || errors.severity) && <View style={styles.errorContainer}><Text style={styles.errorText}>{errors.category || errors.severity}</Text></View>}
-                <View style={styles.categorySection}>
-                    <Text style={styles.sectionTitle}>Issue Category</Text>
-                    <View style={styles.categoryGrid}>
-                        {issueCategories.map((category) => {
-  const isSelected = reportData.category === category.value;
-
-  // Explicitly tell TypeScript that category.icon is a valid Feather icon name
-  const iconName = category.icon as React.ComponentProps<typeof Feather>['name'];
-
-  return (
-    <TouchableOpacity
-      key={category.value}
-      style={[styles.categoryButton, isSelected && styles.selectedCategory]}
-      onPress={() => setReportData((prev) => ({ ...prev, category: category.value }))}
-    >
-      <Feather name={iconName} size={20} color={category.color} />
-      <Text style={styles.categoryLabel}>{category.label}</Text>
-    </TouchableOpacity>
-  );
-})}
-                    </View>
-                </View>
-                <View style={styles.severitySection}>
-                    <Text style={styles.sectionTitle}>Severity Level</Text>
-                    <View style={styles.severityGrid}>
-                        {severityLevels.map((level) => {
-                            const isSelected = reportData.severity === level.value;
-                            return (
-                                <TouchableOpacity key={level.value} style={[styles.severityButton, isSelected && styles.selectedSeverity]} onPress={() => setReportData((prev) => ({ ...prev, severity: level.value }))}>
-                                    <Badge style={[styles.severityBadge, { backgroundColor: level.color }]}><Text style={styles.severityBadgeText}>{level.label}</Text></Badge>
-                                    <Text style={styles.severityDescription}>{level.description}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                </View>
+          <View>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Categorize Issue</Text>
+              <Text style={styles.stepDescription}>
+                Select the type and severity
+              </Text>
             </View>
+            {(errors.category || errors.severity) && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>
+                  {errors.category || errors.severity}
+                </Text>
+              </View>
+            )}
+            <View style={styles.categorySection}>
+              <Text style={styles.sectionTitle}>Issue Category</Text>
+              <View style={styles.categoryGrid}>
+                {issueCategories.map((category) => (
+                  <TouchableOpacity
+                    key={category.value}
+                    style={[
+                      styles.categoryButton,
+                      reportData.category === category.value &&
+                        styles.selectedCategory,
+                    ]}
+                    onPress={() =>
+                      setReportData((prev) => ({ ...prev, category: category.value }))
+                    }
+                  >
+                    <Feather
+                      name={category.icon}
+                      size={20}
+                      color={category.color}
+                    />
+                    <Text style={styles.categoryLabel}>{category.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View style={styles.severitySection}>
+              <Text style={styles.sectionTitle}>Severity Level</Text>
+              <View style={styles.severityGrid}>
+                {severityLevels.map((level) => (
+                  <TouchableOpacity
+                    key={level.value}
+                    style={[
+                      styles.severityButton,
+                      reportData.severity === level.value &&
+                        styles.selectedSeverity,
+                    ]}
+                    onPress={() =>
+                      setReportData((prev) => ({ ...prev, severity: level.value }))
+                    }
+                  >
+                    <Badge
+                      style={[
+                        styles.severityBadge,
+                        { backgroundColor: level.color },
+                      ]}
+                    >
+                      <Text style={styles.severityBadgeText}>{level.label}</Text>
+                    </Badge>
+                    <Text style={styles.severityDescription}>
+                      {level.description}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
         );
       case 4:
         return (
-            <View>
-                <View style={styles.stepHeader}><Text style={styles.stepTitle}>Add Description</Text><Text style={styles.stepDescription}>Provide details about the issue</Text></View>
-                {errors.description && <View style={styles.errorContainer}><Text style={styles.errorText}>{errors.description}</Text></View>}
-                <View style={styles.descriptionSection}><Text style={styles.label}>Description</Text><Input placeholder="Describe the issue in detail..." value={reportData.description} onChangeText={(text) => setReportData((prev) => ({ ...prev, description: text }))} multiline numberOfLines={6} style={styles.descriptionInput} /><Text style={styles.characterCount}>{reportData.description.length}/500</Text></View>
-                <TouchableOpacity style={styles.anonymousOption} onPress={() => setReportData((prev) => ({ ...prev, isAnonymous: !prev.isAnonymous }))}><View style={[styles.checkbox, reportData.isAnonymous && styles.checkedBox]}>{reportData.isAnonymous && <Text style={styles.checkmark}>✓</Text>}</View><Text style={styles.anonymousLabel}>Submit anonymously</Text></TouchableOpacity>
+          <View>
+            <View style={styles.stepHeader}>
+              <Text style={styles.stepTitle}>Add Description</Text>
+              <Text style={styles.stepDescription}>
+                Provide details about the issue
+              </Text>
             </View>
+            {errors.description && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errors.description}</Text>
+              </View>
+            )}
+            <View style={styles.descriptionSection}>
+              <Text style={styles.label}>Description</Text>
+              <Input
+                placeholder="Describe the issue in detail..."
+                value={reportData.description}
+                onChangeText={(text) =>
+                  setReportData((prev) => ({ ...prev, description: text }))
+                }
+                multiline
+                numberOfLines={6}
+                style={styles.descriptionInput}
+              />
+              <Text style={styles.characterCount}>
+                {reportData.description.length}/500
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.anonymousOption}
+              onPress={() =>
+                setReportData((prev) => ({
+                  ...prev,
+                  isAnonymous: !prev.isAnonymous,
+                }))
+              }
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  reportData.isAnonymous && styles.checkedBox,
+                ]}
+              >
+                {reportData.isAnonymous && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
+              </View>
+              <Text style={styles.anonymousLabel}>Submit anonymously</Text>
+            </TouchableOpacity>
+          </View>
         );
       default:
         return null;
@@ -258,15 +575,27 @@ export function ReportIssueScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
             <Feather name="arrow-left" size={24} color="#1f2937" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Report New Issue</Text>
-            <Text style={styles.headerSubtitle}>Step {currentStep} of {totalSteps}</Text>
+            <Text style={styles.headerSubtitle}>
+              Step {currentStep} of {totalSteps}
+            </Text>
           </View>
         </View>
-        <View style={styles.progressBar}><View style={[styles.progressFill, { width: `${(currentStep / totalSteps) * 100}%` }]} /></View>
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${(currentStep / totalSteps) * 100}%` },
+            ]}
+          />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -283,10 +612,18 @@ export function ReportIssueScreen() {
           <TouchableOpacity
             onPress={nextStep}
             disabled={isSubmitting}
-            style={[styles.navButton, styles.primaryButton, currentStep === 1 && { flex: 1 }]}
+            style={[
+              styles.navButton,
+              styles.primaryButton,
+              currentStep === 1 && { flex: 1 },
+            ]}
           >
             <Text style={styles.primaryButtonText}>
-              {isSubmitting ? "Submitting..." : currentStep === totalSteps ? "Submit Report" : "Next"}
+              {isSubmitting
+                ? "Submitting..."
+                : currentStep === totalSteps
+                ? "Submit Report"
+                : "Next"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -296,7 +633,11 @@ export function ReportIssueScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff" },
+  container: {
+  flex: 1,
+  backgroundColor: "#ffffff",
+  paddingTop: Constants.statusBarHeight 
+},
   header: { backgroundColor: "#ffffff", paddingTop: 16, paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: "#e5e7eb" },
   headerContent: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   backButton: { padding: 8, marginRight: 8 },
@@ -305,7 +646,7 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 14, color: "#6b7280" },
   progressBar: { height: 8, backgroundColor: "#e5e7eb", borderRadius: 4 },
   progressFill: { height: 8, backgroundColor: "#2563eb", borderRadius: 4 },
-  contentContainer: { padding: 24, paddingBottom: 16 },
+  contentContainer: { padding: 24, paddingBottom: 16, flexGrow: 1 },
   footer: { paddingVertical: 16, paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: "#e5e7eb", backgroundColor: "#ffffff" },
   navigationButtons: { flexDirection: "row", gap: 12 },
   navButton: { flex: 1, paddingVertical: 14, borderRadius: 99, alignItems: "center", backgroundColor: "#e5e7eb" },
@@ -317,7 +658,7 @@ const styles = StyleSheet.create({
   stepDescription: { fontSize: 16, color: "#6b7280", textAlign: "center" },
   errorContainer: { backgroundColor: "#fef2f2", padding: 12, borderRadius: 8, marginBottom: 16 },
   errorText: { color: "#dc2626", fontSize: 14 },
-  photosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
+  photosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16, justifyContent: 'center' },
   photoContainer: { position: "relative", width: 100, height: 100 },
   photo: { width: 100, height: 100, borderRadius: 8 },
   removePhotoButton: { position: "absolute", top: -8, right: -8, width: 24, height: 24, backgroundColor: "#dc2626", borderRadius: 12, alignItems: "center", justifyContent: "center" },
@@ -359,6 +700,9 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 14, color: "#6b7280" },
   summaryValue: { fontSize: 14, color: "#111827", textTransform: "capitalize" },
   locationSummary: { flex: 1, textAlign: "right", marginLeft: 16 },
+  locationButtonSuccess: {
+  backgroundColor: '#16a34a',
+},
   successContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 16 },
   successCard: { width: "100%", maxWidth: 400 },
   successContent: { padding: 32, alignItems: "center" },
