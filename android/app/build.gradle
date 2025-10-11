@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.parvtx_1410.sadaksaathi'
+    namespace 'com.parvtx1410.sadaksaathi'
     defaultConfig {
-        applicationId 'com.parvtx_1410.sadaksaathi'
+        applicationId 'com.parvtx1410.sadaksaathi'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

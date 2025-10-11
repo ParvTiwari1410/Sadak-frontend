@@ -1,4 +1,4 @@
-package com.parvtx_1410.sadaksaathi
+package com.parvtx1410.sadaksaathi
 
 import android.app.Application
 import android.content.res.Configuration
