@@ -35,7 +35,7 @@ export function ReportDetailScreen() {
       try {
         // IMPORTANT: Replace with your current IP address
         const response = await fetch(
-          `http://10.216.96.125:8080/api/reports/${id}`
+          `http://10.250.27.125:8080/api/reports/${id}`
         );
         if (!response.ok) throw new Error("Report not found");
         const data = await response.json();
