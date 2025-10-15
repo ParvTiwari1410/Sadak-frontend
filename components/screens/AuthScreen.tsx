@@ -50,11 +50,15 @@ export function AuthScreen() {
     setErrors({});
 
     const endpoint = isLogin ? 'login' : 'signup';
-  const url = `http://10.250.27.125:8080/api/auth/${endpoint}`;
+    const url = `http://192.168.1.102:8080/api/users/${endpoint}`;
 
+    // ✅ Include username for signup
     const body = isLogin
       ? JSON.stringify({ email: formData.email, password: formData.password })
-      : JSON.stringify(formData);
+      : JSON.stringify({
+          ...formData,
+          username: formData.email.split("@")[0], // derive username from email
+        });
 
     try {
       const response = await fetch(url, {

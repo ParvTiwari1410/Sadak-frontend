@@ -27,23 +27,25 @@
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
-      ],
-      
-      "package": "com.parvtx1410.sadaksaathi",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCYx8LzaE5LyQ0K_ZpavIiRBXGklwx3pVM"
-        }
-      }
-    },
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/adaptive-icon.png",
+    "backgroundColor": "#ffffff"
+  },
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.CAMERA",
+    "android.permission.ACCESS_FINE_LOCATION",
+    "android.permission.ACCESS_COARSE_LOCATION"
+  ],
+  "usesCleartextTraffic": true,
+  "package": "com.parvtx1410.sadaksaathi",
+  "config": {
+  "googleMaps": {
+    "apiKey": "AIzaSyCYx8LzaE5LyQ0K_ZpavIiRBXGklwx3pVM"
+  }
+}
+}
+,
     "web": {
       "favicon": "./assets/favicon.png"
     },
