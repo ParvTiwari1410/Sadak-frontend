@@ -50,7 +50,7 @@ export function AuthScreen() {
     setErrors({});
 
     const endpoint = isLogin ? 'login' : 'signup';
-    const url = `http://192.168.1.102:8080/api/users/${endpoint}`;
+    const url = `http://192.168.1.101:8080/api/users/${endpoint}`;
 
     // ✅ Include username for signup
     const body = isLogin

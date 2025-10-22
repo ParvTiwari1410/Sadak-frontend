@@ -1,4 +1,4 @@
-package com.parvtx1410.sadaksaathi
+package com.parvtx_1410.sadaksaathi
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

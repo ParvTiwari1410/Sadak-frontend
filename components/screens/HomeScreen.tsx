@@ -52,7 +52,18 @@ export function HomeScreen() {
     { label: "Report Issue", description: "File a new grievance", action: () => navigation.navigate("report" as never), icon: "camera" as const, color: "#eff6ff", iconColor: "#2563eb", urgent: true },
     { label: "My Reports", description: "Track your reports", action: () => router.push('/MyReports'), icon: "check-square" as const, color: "#f0fdf4", iconColor: "#16a34a", urgent: false },
     { label: "Community Feed", description: "See all reports", action: () => navigation.navigate("feed" as never), icon: "message-square" as const, color: "#f5f3ff", iconColor: "#7c3aed", urgent: false },
-    { label: "Nearby Hazards", description: "View nearby issues", action: () => navigation.navigate("feed" as never), icon: "map" as const, color: "#fffbeb", iconColor: "#f59e0b", urgent: false },
+    { 
+  label: "Nearby Hazards",
+  description: "View nearby issues",
+  action: () => navigation.navigate("nearbyhazards" as never),
+  icon: "map" as const,
+  color: "#fffbeb",
+  iconColor: "#f59e0b",
+  urgent: false 
+},
+
+
+
   ] as const;
 
   const stats = {

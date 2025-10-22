@@ -38,7 +38,7 @@
     "android.permission.ACCESS_COARSE_LOCATION"
   ],
   "usesCleartextTraffic": true,
-  "package": "com.parvtx1410.sadaksaathi",
+  "package": "com.parvtx_1410.sadaksaathi",
   "config": {
   "googleMaps": {
     "apiKey": "AIzaSyCYx8LzaE5LyQ0K_ZpavIiRBXGklwx3pVM"

@@ -264,7 +264,7 @@ export function ReportIssueScreen() {
         reportData.photos.map((uri) => uploadToCloudinary(uri))
       );
 
-      const response = await fetch("http://192.168.1.102:8080/api/reports", {
+      const response = await fetch("http://192.168.1.101:8080/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
