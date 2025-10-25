@@ -65,7 +65,7 @@ export function MyReportsScreen() {
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch('http://192.168.1.101:8080/api/reports');; // Using your new IP
+        const response = await fetch('http://10.189.20.125:8080/api/reports');; // Using your new IP
         if (!response.ok) {
           throw new Error('Failed to fetch reports');
         }
